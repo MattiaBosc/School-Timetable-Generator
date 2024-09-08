@@ -1,31 +1,40 @@
 import random
 
 
-class Docente:
-    def __init__(self, nome, materie, max_ore, disponibilita):
-        self.nome = nome
-        self.materie = materie
-        self.max_ore = max_ore
-        self.disponibilita = disponibilita
-        self.ore_associate = 0
+class Teacher:
+    
+    def __init__(self, first_name, last_name, subject, max_hours):
+        self.first_name = first_name
+        self.last_name = last_name
+        self.subject = subject
+        self.max_hours = max_hours
+
+    def __hash__(self):
+        return hash((self.first_name, self.last_name))
+
+    def __eq__(self, other):
+        if isinstance(other, Teacher):
+            return self.first_name == other.first_name and self.last_name == other.last_name
+        return False
+        
+
+class Course:
+    
+    def __init__(self, name, subjects):
+        self.name = name
+        self.subjects = subjects
+        self.timetable = {}
 
 
-class Classe:
-    def __init__(self, nome, materie_assegnate):
-        self.nome = nome
-        self.materie_assegnate = materie_assegnate
-        self.orario = {}
+class Timetable:
 
-
-class Orario:
-    def __init__(self, docenti, classi, slot_orari):
-        self.docenti = docenti
-        self.classi = classi
-        self.slot_orari = slot_orari
-        self.orario_generato = {}
-
+    def __init__(self, teachers, courses):
+        self.teachers = teachers
+        self.courses = courses
+        self.school_timetable = {}
+"""
     def genera_orario(self):
-        for classe in self.classi:
+        for course in self.courses:
             for materia, ore in classe.materie_assegnate.items():
                 for _ in range(ore):
                     docente = self.trova_docente(materia)
@@ -58,3 +67,4 @@ class Orario:
             classe, slot = chiave
             materia, docente = valore
             print(f"Classe {classe} - Slot {slot}: {materia} con {docente}")
+"""

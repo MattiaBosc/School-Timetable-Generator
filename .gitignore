@@ -1,5 +1,8 @@
 # Virtualenv, Microsoft Office, Jupyter Notebooks, Visual Studio Code, macOS, Python
 
+#Personal
+*.xlsx
+
 # macOS
 .DS_Store
 .AppleDouble
@@ -130,3 +133,4 @@ dmypy.json
 .pyre/
 .pytype/
 cython_debug/
+.idea/
