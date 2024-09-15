@@ -1,5 +1,7 @@
 import random
 import csv
+import pandas as pd
+import numpy as np
 
 class Docente:
     def __init__(self, cognome, nome, materie, max_ore, classi):
@@ -58,5 +60,5 @@ def get_teachers(filepath='teachers.csv'):
     all the teachers.
     """
     with open(filepath, 'r') as file_local:
-        all_teachers = list(csv.reader(file_local))
+        all_teachers = pd.read_csv(file_local)
     return all_teachers
