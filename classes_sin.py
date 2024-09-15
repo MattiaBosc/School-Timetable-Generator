@@ -13,9 +13,10 @@ class Docente:
         self.ore_associate = 0
 
 class Classe:
-    def __init__(self, nome, docenti_assegnati):
+    def __init__(self, nome, docenti_assegnati, tot_ore):
         self.nome = nome
         self.docenti_assegnati = docenti_assegnati
+        self.tot_ore=tot_ore
         self.orario = {}
 
 class Orario:
@@ -55,10 +56,10 @@ class Orario:
             materia, docente = valore
             print(f"Classe {classe} - Slot {slot}: {materia} con {docente}")
 
-def get_teachers(filepath='teachers.csv'):
+def get_info(filepath='teachers.csv'):
     """ Read a text file and return the list of
     all the teachers.
     """
     with open(filepath, 'r') as file_local:
-        all_teachers = pd.read_csv(file_local)
-    return all_teachers
+        info = pd.read_csv(file_local)
+    return info
