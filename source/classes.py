@@ -1,5 +1,4 @@
-import random
-import copy
+from collections import deque
 
 DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
 HOURS = 6
@@ -13,11 +12,11 @@ class Teacher:
         self.max_hours = max_hours
 
     def __hash__(self):
-        return hash((self.first_name, self.last_name, self.subject))
+        return hash((self.first_name, self.last_name))
 
     def __eq__(self, other):
         if isinstance(other, Teacher):
-            return self.first_name == other.first_name and self.last_name == other.last_name and self.subject == other.subject
+            return self.first_name == other.first_name and self.last_name == other.last_name
         return False
 
     def __str__(self):
@@ -29,36 +28,35 @@ class Course:
     def __init__(self, name, subjects):
         self.name = name
         self.subjects = subjects
-        self.timetable = {}
 
+    def __str__(self):
+        return f"{self.name} {self.subjects}"
 
 class Timetable:
 
     def __init__(self, teachers, courses):
         self.teachers = teachers
         self.courses = courses
-        self.school_timetable = self.timetable_setup()
+        self.domains = self.initialize_domains()
+        self.solution = {}
 
-    def timetable_setup(self):
+    def initialize_domains(self):
         """
-        Set up an initial (completely full) timetable
+        Inizialize domains for each time slot of the day
+        by adding all the possible teachers
         """
-        school_timetable = {}
+        domains = {}
         for day in DAYS:
-            school_timetable[f"{day}"] = [copy.deepcopy(self.teachers)] * HOURS
-        return school_timetable
+            domains[day] = [set(self.teachers) for _ in range(HOURS)]
+        return domains
 
     def __str__(self):
         """
         Print timetable to terminal
         """
         string = ""
-        for day, schedule in self.school_timetable.items():
-            string += f"{day}:\n"
-            for i, time_slot in enumerate(schedule):
-                string += f"{i+1}°: "
-                for teacher in time_slot:
-                    string += f"{teacher}\n"
+        for (day, timeslot), teacher in self.solution.items():
+            string += f"{day} {timeslot + 1}: {teacher} \n"
         return string
 
     def enforce_node_consistency(self):
@@ -66,69 +64,123 @@ class Timetable:
         Enforce node consistency (unary constraint) on timetable:
         remove teacher if max number of available hours is reached
         """
-        for day in self.school_timetable.values():
+        for day in self.domains.values():
             for time_slot in day:
                 for teacher in self.teachers:
                     if teacher.max_hours <= 0:
                         time_slot.discard(teacher)
 
-    def revise(self):
+    def consistent(self, teacher1, teacher2):
         """
-        Enforce binary constraints on timetable:
-        physical education requires two contiguous hours in a row
+        Check for consistency of binary constraints on teachers:
+            1. Physical Education requires two contiguous hours in a row
+
+        Return True if two teachers are consistent; return False otherwise
+        """
+        if teacher1.subject == "MOTORIA" and teacher2.subject != "MOTORIA":
+            return False
+        return True
+
+    def revise(self, day, timeslot1, timeslot2):
+        """
+        Make `timelot1` arc consistent with `timeslot2`.
+        Remove values from the domain of timeslot1 for which there is no
+        possible corresponding value in the domain of timeslot2.
+
+        Return True if a revision was made; return False otherwise.
         """
         revised = False
-        for day in self.school_timetable.values():
-            for i, time_slot in enumerate(day):
-                teacher = Teacher("MOTORIA", "BASILICO", "NICOLA")
-                if i == 0:
-                    if teacher not in day[i + 1]:
-                        time_slot.discard(teacher)
-                        revised = True
-                elif i == HOURS - 1:
-                    if teacher not in day[i - 1]:
-                        time_slot.discard(teacher)
-                        revised = True
-                else:
-                    if teacher not in day[i + 1] and teacher not in day[i - 1]:
-                        time_slot.discard(teacher)
-                        revised = True
+        for teacher1 in set(self.domains[day][timeslot1]):
+            if not any(self.consistent(teacher1, teacher2) for teacher2 in self.domains[day][timeslot2]):
+                self.domains[day][timeslot1].discard(teacher1)
+                revised = True
         return revised
 
+    def ac3(self):
+        """
+        Update `domains` such that each variable is arc consistent.
+        Begin with initial queue of all arcs in the problem.
+
+        Return True if arc consistency is enforced and no domains are empty;
+        return False if one or more domains end up empty.
+        """
+        queue = deque()
+        for day, slots in self.domains.items():
+            for i in range(HOURS):
+                if i < HOURS - 1:
+                    queue.append((day, i, i + 1))
+
+        while queue:
+            day, timeslot1, timeslot2 = queue.popleft()
+            if self.revise(day, timeslot1, timeslot2):
+                if not self.domains[day][timeslot1]:
+                    return False
+                for i in range(HOURS):
+                    if i != timeslot1:
+                        queue.append((day, i, timeslot1))
+        return True
+
+    def complete(self, assignment):
+        """
+        Return True if `assignment` is complete; return False otherwise.
+        """
+        return len(assignment) == HOURS * len(DAYS)
+
+    def consistent_assignment(self, day, timeslot, teacher, assignment):
+        """
+        Check wheter `teacher` has already been assigned for the same `timeslot` on the same `day` of the `assignment`.
+
+        Return True if `assignment` is consistent; return False otherwise.
+        """        
+        for (d, t), assigned_teacher in assignment.items():
+            if d == day and t == timeslot and assigned_teacher == teacher:
+                return False
+        return True
+
+    def select_unassigned_variable(self, assignment):
+        for day in DAYS:
+            for i in range(HOURS):
+                if (day, i) not in assignment:
+                    return day, i
+        return (None, None)
+
+    def order_domain_values(self, day, timeslot):
+        for teacher in list(self.domains[day][timeslot]):
+            if teacher.max_hours <= 0:
+                self.domains[day][timeslot].discard(teacher)
+        return list(self.domains[day][timeslot])
+
+    def backtrack(self, assignment={}):
+        """
+        Use backtrack algorithm to complete the partial input assignment, if possible to do so.
+        If no assignment is possible, return None.
+
+        `assignment` is a mapping from variables (keys) to words (values).
+        """
+        if self.complete(assignment):
+            return assignment
+
+        day, timeslot = self.select_unassigned_variable(assignment)
+
+        for teacher in self.order_domain_values(day, timeslot):
+            if self.consistent_assignment(day, timeslot, teacher, assignment):
+                assignment[(day, timeslot)] = teacher
+                teacher.max_hours -= 1
+                result = self.backtrack(assignment)
+                if result:
+                    self.solution = result
+                    return result
+                del assignment[(day, timeslot)]
+        return None
 
 """
-    def genera_orario(self):
-        for course in self.courses:
-            for materia, ore in classe.materie_assegnate.items():
-                for _ in range(ore):
-                    docente = self.trova_docente(materia)
-                    if docente and docente.ore_associate < docente.max_ore:
-                        slot = self.trova_slot_libero(classe, docente)
-                        if slot:
-                            self.orario_generato[(classe.nome, slot)] = (
-                                materia,
-                                docente.nome,
-                            )
-                            docente.ore_associate += 1
-
-    def trova_docente(self, materia):
-        docenti_possibili = [
-            docente for docente in self.docenti if materia in docente.materie
-        ]
-        return random.choice(docenti_possibili) if docenti_possibili else None
-
-    def trova_slot_libero(self, classe, docente):
-        # Trova uno slot libero considerando le disponibilità
-        pass
-
-    def verifica_vincoli(self):
-        # Controlla che ogni docente non abbia sovrapposizioni o ore extra
-        # Controlla che ogni classe abbia tutte le lezioni necessarie
-        pass
-
-    def output(self):
-        for chiave, valore in self.orario_generato.items():
-            classe, slot = chiave
-            materia, docente = valore
-            print(f"Classe {classe} - Slot {slot}: {materia} con {docente}")
+    def subject_check(self, course):
+        check = {}
+        for day in self.school_timetable.values():
+            for time_slot in day:
+                for teacher in time_slot:
+                    check[f"{teacher.subject}"] = check.get(f"{teacher.subject}", 0) + 1
+        print(check)
+        print(course.subjects)
+        print(check == course.subjects)
 """

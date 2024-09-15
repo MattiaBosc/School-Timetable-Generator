@@ -11,16 +11,14 @@ with open("./teachers.csv", newline="", encoding="utf-8-sig") as csvfile:
     reader = csv.DictReader(csvfile)
     for row in reader:
         keys = list(row.keys())
-        subjects = str(row[f"{keys[0]}"]).split("-")
-        for subject in subjects:
-            teachers.add(
-                Teacher(
-                    subject.strip().capitalize(),
-                    str(row[f"{keys[1]}"]).strip().capitalize(),
-                    str(row[f"{keys[2]}"]).strip().capitalize(),
-                    int(row[f"{keys[4]}"]), #CHANGE back to 3!
-                )
+        teachers.add(
+            Teacher(
+                [subject.strip().capitalize() for subject in str(row[f"{keys[0]}"]).split("-")],
+                str(row[f"{keys[1]}"]).strip().capitalize(),
+                str(row[f"{keys[2]}"]).strip().capitalize(),
+                int(row[f"{keys[4]}"]),  # CHANGE back to 3!
             )
+        )
 
 
 # Read courses' data
@@ -30,12 +28,14 @@ for file in os.listdir("./courses"):
         reader.__next__()
         subjects = {}
         for row in reader:
-            subjects[f"{row[0]}"] = int(row[1])
+            subjects[f"{row[0]}".capitalize()] = int(row[1])
         courses.add(Course(f"{file}".split(".")[0], subjects))
 
 
 timetable = Timetable(teachers, courses)
-timetable.enforce_node_consistency()
-timetable.revise()
 
-print(timetable)
+if timetable.ac3():
+    if timetable.backtrack():
+        print(timetable)
+    else:
+        print("NO SOLUTION")
