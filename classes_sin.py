@@ -3,11 +3,17 @@ import csv
 import pandas as pd
 import numpy as np
 
+TABELLA_ORARIO={'1LS':{'LUN':[i for i in range(0,6)],
+                       'MAR':[i for i in range(0,6)],
+                       'MER': [i for i in range(0,6)],
+                       'GIO': [i for i in range(0,6)],
+                       'VEN':[i for i in range(0,6)]}}
+
 class Docente:
-    def __init__(self, cognome, nome, materie, max_ore, classi):
+    def __init__(self, cognome, nome, materia, max_ore, classi):
         self.cognome = cognome
         self.nome = nome
-        self.materie = materie
+        self.materia = materia
         self.max_ore = max_ore
         self.classi = classi
         self.ore_associate = 0
@@ -16,7 +22,7 @@ class Classe:
     def __init__(self, nome, docenti_assegnati, tot_ore):
         self.nome = nome
         self.docenti_assegnati = docenti_assegnati
-        self.tot_ore=tot_ore
+        self.tot_ore = tot_ore
         self.orario = {}
 
 class Orario:
@@ -28,22 +34,94 @@ class Orario:
 
     def genera_orario(self):
         for classe in self.classi:
-            for materia, ore in classe.materie_assegnate.items():
+            print(classe.nome)
+            for docente, ore in classe.docenti_assegnati.items():
+                print(docente, ore)
                 for _ in range(ore):
-                    docente = self.trova_docente(materia)
-                    if docente and docente.ore_associate < docente.max_ore:
-                        slot = self.trova_slot_libero(classe, docente)
-                        if slot:
-                            self.orario_generato[(classe.nome, slot)] = (materia, docente.nome)
-                            docente.ore_associate += 1
+                    print(_)
+                    slot = self.trova_slot_libero(classe)
+                    self.orario_generato[(classe.nome, slot)] = (docente)
+                    #print(self.orario_generato[(classe.nome, slot)])
+                    #print(docente.ore_associate)
+                    #docente.ore_associate += 1
+        #print(self.orario_generato)
+        self.output()
 
-    def trova_docente(self, materia):
-        docenti_possibili = [docente for docente in self.docenti if materia in docente.materie]
-        return random.choice(docenti_possibili) if docenti_possibili else None
-
-    def trova_slot_libero(self, classe, docente):
+    def trova_slot_libero(self, classe):
         # Trova uno slot libero considerando le disponibilità
-        pass
+        free_hour = False
+        while free_hour == False:
+            ora = random.randint(1, classe.tot_ore)
+            ore_lun = len(self.slot_orari[classe.nome]['Lun'])
+            ore_mar = len(self.slot_orari[classe.nome]['Mar'])
+            ore_mer = len(self.slot_orari[classe.nome]['Mer'])
+            ore_gio = len(self.slot_orari[classe.nome]['Gio'])
+            ore_ven = len(self.slot_orari[classe.nome]['Ven'])
+            if ora <= ore_lun:
+                ora_lun = ora - 1
+                #print(ora, 'Lun')
+                if self.slot_orari[classe.nome]['Lun'][ora_lun] == -1:
+                    self.slot_orari[classe.nome]['Lun'][ora_lun] = 0
+                    print(f"Lunedì: {ora}")
+                    return ora
+                else:
+                    print(f"Lunedì - Ora occupata: {ora}")
+                    print(self.slot_orari[classe.nome]['Lun'][ora_lun])
+                    continue
+
+            elif ore_lun < ora <= (ore_lun+ore_mar):
+                ora_mar = ora - ore_lun-1
+                #print(ora, 'Mar')
+                if self.slot_orari[classe.nome]['Mar'][ora_mar] == -1:
+                    self.slot_orari[classe.nome]['Mar'][ora_mar] = 0
+                    print(f"Martedì: {ora}")
+                    return ora
+                else:
+                    print(f"Martedì - Ora occupata: {ora}")
+                    print(self.slot_orari[classe.nome]['Mar'][ora_mar])
+                    continue
+
+            elif (ore_lun + ore_mar) < ora <= (ore_lun+ore_mar+ore_mer):
+                ora_mer = ora - (ore_lun+ore_mar)-1
+                #print(ora, 'Mer')
+                if self.slot_orari[classe.nome]['Mer'][ora_mer] == -1:
+                    self.slot_orari[classe.nome]['Mer'][ora_mer] = 0
+                    print(f"Mercoledì: {ora}")
+                    return ora
+                else:
+                    print(f"Mercoledì - Ora occupata: {ora}")
+                    print(self.slot_orari[classe.nome]['Mer'][ora_mer])
+                    continue
+
+            elif (ore_lun+ore_mar+ore_mer) < ora <= (ore_lun+ore_mar+ore_mer+ore_gio):
+                ora_gio = ora - (ore_lun+ore_mar+ore_mer)-1
+                #print(ora, 'Gio')
+                if self.slot_orari[classe.nome]['Gio'][ora_gio] == -1:
+                    self.slot_orari[classe.nome]['Gio'][ora_gio] = 0
+                    print(f"Giovedì: {ora}")
+                    return ora
+                else:
+                    print(f"Giovedì - Ora occupata: {ora}")
+                    print(self.slot_orari[classe.nome]['Gio'][ora_gio])
+                    continue
+
+            elif (ore_lun+ore_mar+ore_mer+ore_gio) < ora <= (ore_lun+ore_mar+ore_mer+ore_gio+ore_ven):
+                ora_ven = ora - (ore_lun+ore_mar+ore_mer+ore_gio)-1
+                #print(ora, 'Ven')
+                if self.slot_orari[classe.nome]['Ven'][ora_ven] == -1:
+                    self.slot_orari[classe.nome]['Ven'][ora_ven] = 0
+                    print(f"Venerdì: {ora}")
+                    return ora
+                else:
+                    print(f"Venerdì - Ora occupata: {ora}")
+                    print(self.slot_orari[classe.nome]['Ven'][ora_ven])
+                    continue
+            else:
+                print(ora, "Not valid number")
+                break
+
+
+
 
     def verifica_vincoli(self):
         # Controlla che ogni docente non abbia sovrapposizioni o ore extra
@@ -51,10 +129,26 @@ class Orario:
         pass
 
     def output(self):
+        #print(TABELLA_ORARIO)
+        list_courses = list(TABELLA_ORARIO.keys())
+        nday_to_wday={0: 'LUN', 1: 'MAR', 2: 'MER', 3: 'GIO', 4: 'VEN'}
         for chiave, valore in self.orario_generato.items():
             classe, slot = chiave
-            materia, docente = valore
-            print(f"Classe {classe} - Slot {slot}: {materia} con {docente}")
+            docente = valore
+            slot -=1
+            if classe == list_courses[0]:
+                nday = slot//6
+                hour = slot%6
+                wday=nday_to_wday[nday]
+                TABELLA_ORARIO[classe][wday][hour]=docente
+        for pr_class in TABELLA_ORARIO.keys():
+            print(pr_class)
+            for pr_day in TABELLA_ORARIO[pr_class].keys():
+                print(pr_day+":",end="")
+                print(TABELLA_ORARIO[pr_class][pr_day])
+
+            #if classe==TABELLA_ORARIO.keys
+            #print(f"Classe {classe} - Slot {slot}: {docente}")
 
 def get_info(filepath='teachers.csv'):
     """ Read a text file and return the list of
