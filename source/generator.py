@@ -8,18 +8,18 @@ courses = set()
 
 # Read teachers's data
 with open("./teachers.csv", newline="", encoding="utf-8-sig") as csvfile:
-    reader = csv.DictReader(csvfile)
+    reader = csv.reader(csvfile)
+    header = next(reader)
     for row in reader:
-        keys = list(row.keys())
         teachers.add(
             Teacher(
-                [subject.strip().capitalize() for subject in str(row[f"{keys[0]}"]).split("-")],
-                str(row[f"{keys[1]}"]).strip().capitalize(),
-                str(row[f"{keys[2]}"]).strip().capitalize(),
-                int(row[f"{keys[4]}"]),  # CHANGE back to 3!
+                [subject.strip().capitalize() for subject in row[0].split("-")],
+                row[1].strip().capitalize(),
+                row[2].strip().capitalize(),
+                int(row[4]) #change back to 3
             )
         )
-
+        
 
 # Read courses' data
 for file in os.listdir("./courses"):
@@ -32,7 +32,7 @@ for file in os.listdir("./courses"):
         courses.add(Course(f"{file}".split(".")[0], subjects))
 
 
-timetable = Timetable(teachers, courses)
+timetable = Timetable(courses, teachers)
 
 if timetable.ac3():
     if timetable.backtrack():

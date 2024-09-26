@@ -1,12 +1,13 @@
 from collections import deque
+import random
 
 DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
 HOURS = 6
 
 class Teacher:
 
-    def __init__(self, subject, last_name, first_name, max_hours=0):
-        self.subject = subject
+    def __init__(self, subjects, last_name, first_name, max_hours=0, courses=[]):
+        self.subjects = subjects
         self.last_name = last_name
         self.first_name = first_name
         self.max_hours = max_hours
@@ -20,7 +21,7 @@ class Teacher:
         return False
 
     def __str__(self):
-        return f"{self.first_name} {self.last_name} ({self.subject})"
+        return f"{self.first_name} {self.last_name} ({self.subjects})"
 
 
 class Course:
@@ -34,9 +35,9 @@ class Course:
 
 class Timetable:
 
-    def __init__(self, teachers, courses):
-        self.teachers = teachers
+    def __init__(self, courses, teachers):
         self.courses = courses
+        self.teachers = teachers
         self.domains = self.initialize_domains()
         self.solution = {}
 
@@ -59,17 +60,6 @@ class Timetable:
             string += f"{day} {timeslot + 1}: {teacher} \n"
         return string
 
-    def enforce_node_consistency(self):
-        """
-        Enforce node consistency (unary constraint) on timetable:
-        remove teacher if max number of available hours is reached
-        """
-        for day in self.domains.values():
-            for time_slot in day:
-                for teacher in self.teachers:
-                    if teacher.max_hours <= 0:
-                        time_slot.discard(teacher)
-
     def consistent(self, teacher1, teacher2):
         """
         Check for consistency of binary constraints on teachers:
@@ -77,7 +67,7 @@ class Timetable:
 
         Return True if two teachers are consistent; return False otherwise
         """
-        if teacher1.subject == "MOTORIA" and teacher2.subject != "MOTORIA":
+        if "Motoria" in teacher1.subjects and "Motoria" not in teacher2.subjects:
             return False
         return True
 
@@ -91,6 +81,9 @@ class Timetable:
         """
         revised = False
         for teacher1 in set(self.domains[day][timeslot1]):
+            if teacher1.max_hours  <= 0: #can create a function by itslef...
+                self.domains[day][timeslot1].discard(teacher1)
+                revised = True
             if not any(self.consistent(teacher1, teacher2) for teacher2 in self.domains[day][timeslot2]):
                 self.domains[day][timeslot1].discard(teacher1)
                 revised = True
@@ -104,8 +97,9 @@ class Timetable:
         Return True if arc consistency is enforced and no domains are empty;
         return False if one or more domains end up empty.
         """
+
         queue = deque()
-        for day, slots in self.domains.items():
+        for day in self.domains:
             for i in range(HOURS):
                 if i < HOURS - 1:
                     queue.append((day, i, i + 1))
@@ -126,15 +120,24 @@ class Timetable:
         """
         return len(assignment) == HOURS * len(DAYS)
 
-    def consistent_assignment(self, day, timeslot, teacher, assignment):
+    def consistent_assignment(self, assignment):
         """
-        Check wheter `teacher` has already been assigned for the same `timeslot` on the same `day` of the `assignment`.
-
         Return True if `assignment` is consistent; return False otherwise.
-        """        
-        for (d, t), assigned_teacher in assignment.items():
-            if d == day and t == timeslot and assigned_teacher == teacher:
-                return False
+        """
+        count = 0
+        for (day, timeslot), assigned_teacher in assignment.items():
+            if "Motoria" in assigned_teacher.subjects and timeslot == 5:
+                previous_teacher = assignment[(day, timeslot - 1)]
+                if "Motoria" not in previous_teacher.subjects:
+                    return False
+
+            elif "Motoria" in assigned_teacher.subjects and (day, timeslot + 1) in assignment:
+                if count == 0:
+                    count += 1
+                    next_teacher = assignment[(day, timeslot + 1)]
+                    if "Motoria" not in next_teacher.subjects:
+                        return False
+                else: pass
         return True
 
     def select_unassigned_variable(self, assignment):
@@ -144,43 +147,33 @@ class Timetable:
                     return day, i
         return (None, None)
 
-    def order_domain_values(self, day, timeslot):
-        for teacher in list(self.domains[day][timeslot]):
-            if teacher.max_hours <= 0:
-                self.domains[day][timeslot].discard(teacher)
-        return list(self.domains[day][timeslot])
+    def shuffle_domain_values(self, day, timeslot):
+        """
+        Shuffle teachers
+        """
+        shuffled_professors = list(self.domains[day][timeslot])
+        random.shuffle(shuffled_professors)
+        return shuffled_professors
 
     def backtrack(self, assignment={}):
         """
         Use backtrack algorithm to complete the partial input assignment, if possible to do so.
         If no assignment is possible, return None.
-
-        `assignment` is a mapping from variables (keys) to words (values).
         """
         if self.complete(assignment):
             return assignment
 
         day, timeslot = self.select_unassigned_variable(assignment)
 
-        for teacher in self.order_domain_values(day, timeslot):
-            if self.consistent_assignment(day, timeslot, teacher, assignment):
+        for teacher in self.shuffle_domain_values(day, timeslot):
+            if teacher.max_hours > 0:
                 assignment[(day, timeslot)] = teacher
-                teacher.max_hours -= 1
-                result = self.backtrack(assignment)
-                if result:
-                    self.solution = result
-                    return result
+                if self.consistent_assignment(assignment):
+                    teacher.max_hours -= 1
+                    result = self.backtrack(assignment)
+                    if result:
+                        self.solution = result
+                        return result
+                    teacher.max_hours += 1
                 del assignment[(day, timeslot)]
         return None
-
-"""
-    def subject_check(self, course):
-        check = {}
-        for day in self.school_timetable.values():
-            for time_slot in day:
-                for teacher in time_slot:
-                    check[f"{teacher.subject}"] = check.get(f"{teacher.subject}", 0) + 1
-        print(check)
-        print(course.subjects)
-        print(check == course.subjects)
-"""
